@@ -3,11 +3,13 @@ package com.asset.migration.execution;
 import com.asset.migration.enums.Datasource;
 import com.asset.migration.query.IMigrationQuery;
 import lombok.Data;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.EntityManager;
 import javax.persistence.Query;
 import javax.persistence.Tuple;
 import javax.persistence.TupleElement;
+import java.util.Arrays;
 import java.util.List;
 
 @Data
@@ -38,9 +40,14 @@ public class QueryExecutable implements IQueryExecutable {
         return executeQuery(this.migrationQuery);
     }
 
+    @Transactional
     public void executeToQueries(List<IMigrationQuery> migrationQueries){
         migrationQueries.stream().forEach(migrationQuery->{
-            executeQuery(migrationQuery.getToQuery(), Datasource.SECONDARY);
+            String[] result = migrationQuery.getToQuery().split("\\r?\\n");
+            Arrays.stream(result).forEach((query)->{
+                executeQuery(query, Datasource.SECONDARY);
+            });
+//Object relation mapping - query db  - sql injection - validate - trim - transaction - connection retry to connect
         });
     }
 
@@ -50,6 +57,7 @@ public class QueryExecutable implements IQueryExecutable {
         return migrationQuery;
     }
 
+    @Transactional
     public List<Tuple> executeQuery(String queryString, Datasource datasource){
         Query query = getEntityManager(datasource).createNativeQuery(queryString, Tuple.class);
 
@@ -62,14 +70,18 @@ public class QueryExecutable implements IQueryExecutable {
         return this.getEntityManager(Datasource.PRIMARY);
     }
 
-    private EntityManager getEntityManager(Datasource datasource){
+    @Transactional
+    public EntityManager getEntityManager(Datasource datasource){
+        EntityManager entityManager = null;
         switch (datasource){
             case PRIMARY:
-                return this.primaryEntityManager;
+                entityManager = this.primaryEntityManager;
             case SECONDARY:
-                return this.secondaryEntityManager;
+                entityManager = this.secondaryEntityManager;
             default:
-                return this.primaryEntityManager;
+                entityManager = this.primaryEntityManager;
         }
+
+        return entityManager;
     }
 }

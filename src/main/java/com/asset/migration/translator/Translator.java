@@ -252,9 +252,9 @@ public class Translator implements ITranslator{
     private String translateValue(IColumnQuery columnQuery, Object val){
 
         String castFormat = env.getProperty("app.query.cast." + columnQuery.getDataType().toLowerCase());
-        if (castFormat.equals("app.query.cast.date")){
+        if (columnQuery.getDataType().toLowerCase().equals("date")){
             val = val.toString().trim().split(" ")[0];
-        }else if (castFormat.equals("app.query.cast.datetime")){
+        }else if (columnQuery.getDataType().toLowerCase().equals("datetime")){
             val = val.toString().trim().split("\\.")[0];
         }
         castFormat= String.format(castFormat, val);
