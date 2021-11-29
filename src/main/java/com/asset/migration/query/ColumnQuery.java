@@ -73,7 +73,7 @@ public class ColumnQuery implements IColumnQuery {
         return this.skipTo;
     }
     public Boolean getSkipFrom(){
-        return this.skipTo;
+        return this.skipFrom;
     }
 
 

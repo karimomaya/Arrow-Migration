@@ -23,6 +23,6 @@ public class ColumnConfig implements IColumnConfig{
         return this.skipTo;
     }
     public Boolean getSkipFrom(){
-        return this.skipTo;
+        return this.skipFrom;
     }
 }

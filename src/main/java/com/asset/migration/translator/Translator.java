@@ -196,7 +196,10 @@ public class Translator implements ITranslator{
 
 
     private Object getDefaultValue(Tuple tuple, IColumnQuery columnQuery, String key){
-        Object value = tuple.get(key);
+
+        Object value = "";
+
+        if (!columnQuery.getSkipFrom())  value = tuple.get(key);
 
         if ((value == null || value.toString().isEmpty()) && columnQuery.getDefaultVal() != null) {
             value = columnQuery.getDefaultVal();

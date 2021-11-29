@@ -1,38 +1,67 @@
 {
   "tables": [
     {
-      "from": "users",
-      "to": "Users",
+      "from": "tlex_out_info",
+      "to": "MFA_OUTGOING_INFO",
       "columns": [
         {
-          "from": "User_Number",
+          "from": "DOC_NO",
           "skipTo": true
         },
         {
-          "from": "User_Psw",
-          "to": "password",
+          "to": "VERSION_ID",
+          "dataType": "number",
+          "defaultVal": 1,
+          "skipFrom": true
+        },
+        {
+          "from": "GENERC_NO",
+          "to": "MFAF_OUTGOING_INFO_NUMBER",
           "dataType": "VARCHAR"
         },
         {
-          "from": "User_Name",
-          "to": "name",
-          "dataType": "VARCHAR",
-          "id": "username"
+          "from": "GENERC_DATE",
+          "to": "MFAF_OUTGOING_INFO_DATE",
+          "dataType": "DATE"
         },
         {
-          "from": "User_Rank",
-          "to": "rank",
-          "dataType": "NUMBER",
-          "config": "",
-          "query": "select User_Number from users where User_Name = '$User_Name' ",
-          "datasource": "PRIMARY",
-          "defaultVal": "",
-          "bsValidations": [
-            {
-              "mandatory": true,
-              "regex": ""
-            }
-          ]
+          "from": "SOURCE_NO",
+          "to": "MFAF_OUTGOING_INFO_BE3THNUM",
+          "dataType": "VARCHAR"
+        },
+        {
+          "from": "SOURCE_CODE",
+          "to": "MFAF_OUTGOING_INFO_BE3THA",
+          "dataType": "VARCHAR"
+        },
+        {
+          "from": "SUBJECT",
+          "to": "MFAF_OUTGOING_INFO_SUBJECT",
+          "dataType": "VARCHAR"
+        },
+        {
+          "from": "USER_CODE",
+          "skipTo": true
+        },
+        {
+          "from": "No_IMAGES",
+          "skipTo": true
+        },
+        {
+          "from": "table_mail_type",
+          "skipTo": true
+        },
+        {
+          "from": "mname",
+          "skipTo": true
+        },
+        {
+          "from": "mname1",
+          "skipTo": true
+        },
+        {
+          "from": "SAVENAME",
+          "skipTo": true
         }
       ],
       "where": [
@@ -40,26 +69,15 @@
           "operator": "AND",
           "conditions": [
             {
-              "column": "User_Number",
-              "comparison": "GTE",
-              "value": 0,
-              "dataType": "NUMBER"
-            },
-            {
-              "column": "User_Rank",
-              "comparison": "LT",
-              "value": 2,
-              "dataType": "NUMBER"
-            },
-            {
-              "column": "User_Name",
+              "column": "GENERC_NO",
               "comparison": "LIKE",
-              "value": "%احمد%",
+              "value": "%%",
               "dataType": "VARCHAR"
             }
           ]
         }
       ]
     }
+
   ]
 }
