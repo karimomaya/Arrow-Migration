@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -201,11 +202,29 @@ public class Translator implements ITranslator{
 
         if (!columnQuery.getSkipFrom())  value = tuple.get(key);
 
+
+
         if ((value == null || value.toString().isEmpty()) && columnQuery.getDefaultVal() != null) {
             value = columnQuery.getDefaultVal();
+            if (value.equals("random")) {
+                value  = (columnQuery.getDataType() != null && columnQuery.getDataType().toLowerCase().equals("number"))? generateRandomInt() : generateRandomString();
+            }
         }
 
         return value;
+    }
+
+    private int generateRandomInt(){
+        UUID idOne = UUID.randomUUID();
+        String str=""+idOne;
+        int uid=str.hashCode();
+        String filterStr=""+uid;
+        str=filterStr.replaceAll("-", "");
+        return Integer.parseInt(str);
+    }
+
+    private String generateRandomString(){
+        return UUID.randomUUID().toString();
     }
 
     private Object getDefaultValue(Tuple tuple, Map.Entry entry){
@@ -233,6 +252,11 @@ public class Translator implements ITranslator{
     private String translateValue(IColumnQuery columnQuery, Object val){
 
         String castFormat = env.getProperty("app.query.cast." + columnQuery.getDataType().toLowerCase());
+        if (castFormat.equals("app.query.cast.date")){
+            val = val.toString().trim().split(" ")[0];
+        }else if (castFormat.equals("app.query.cast.datetime")){
+            val = val.toString().trim().split("\\.")[0];
+        }
         castFormat= String.format(castFormat, val);
         return castFormat;
     }

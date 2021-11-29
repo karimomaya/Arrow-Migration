@@ -11,7 +11,7 @@
         {
           "to": "VERSION_ID",
           "dataType": "number",
-          "defaultVal": 1,
+          "defaultVal": "random",
           "skipFrom": true
         },
         {
