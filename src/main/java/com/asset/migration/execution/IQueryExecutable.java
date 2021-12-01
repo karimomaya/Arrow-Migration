@@ -6,6 +6,7 @@ import com.asset.migration.query.IMigrationQuery;
 import javax.persistence.EntityManager;
 import javax.persistence.Tuple;
 import java.util.List;
+import java.util.Map;
 
 public interface IQueryExecutable {
     public void setPrimaryEntityManager(EntityManager primaryEntityManager);

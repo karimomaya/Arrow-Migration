@@ -38,7 +38,7 @@ public class Application {
 
     @PostConstruct
     public void run(){
-        IQueryExecutable queryExecutable = new QueryExecutable(primaryEntityManager, secondaryEntityManager);
+        IQueryExecutable queryExecutable = new QueryExecutable(env, primaryEntityManager, secondaryEntityManager);
         migrate.setParser(new Parser())
                 .setMigrationConfig(new MigrationConfig())
                 .setTranslator(new Translator(env, queryExecutable))

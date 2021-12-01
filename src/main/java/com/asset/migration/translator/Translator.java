@@ -29,16 +29,28 @@ import java.util.stream.IntStream;
 public class Translator implements ITranslator{
     Environment env;
     IQueryExecutable queryExecutable;
+    String lineBreakCarriageReturn = "";
+    String carriageReturnLineBreak = "";
+    String carriageReturn = "";
+    String lineBreak = "";
 
     public Translator(Environment env, IQueryExecutable queryExecutable){
         this.env = env;
         this.queryExecutable = queryExecutable;
+        this.lineBreakCarriageReturn = this.env.getProperty("migrate.line.break.carriage.return");
+        this.carriageReturnLineBreak = this.env.getProperty("migrate.carriage.return.line.break");
+        this.carriageReturn = this.env.getProperty("migrate.carriage.return");
+        this.lineBreak = this.env.getProperty("migrate.line.break");
+
     }
 
     private String constructFromQuery(IMigrationQuery migrationQuery){
         StringBuilder selectStatement = new StringBuilder();
+        String selectKeyword = this.env.getProperty("migrate.select.keyword");
 
-        selectStatement.append("SELECT ");
+        String endOfSelect = this.env.getProperty("migrate.end.selection");
+        endOfSelect = (endOfSelect != null)? endOfSelect : "";
+        selectStatement.append(selectKeyword+" ");
         int count = 0;
         for (Map.Entry entry : migrationQuery.getColumnsMapping().entrySet()) {
             if (entry.getKey().toString().contains("SKIP_") || ((IColumnQuery)entry.getValue()).getSkipFrom()) continue;
@@ -46,25 +58,29 @@ public class Translator implements ITranslator{
             selectStatement.append(entry.getKey().toString() + " ");
         }
 
-        selectStatement.append("FROM "+migrationQuery.getFromTable());
+        String fromKeyword = this.env.getProperty("migrate.from.keyword");
+
+        selectStatement.append(fromKeyword+" "+migrationQuery.getFromTable());
 
         List<MigrationQuery.ConditionQuery> conditionQueryList = migrationQuery.getConditionList();
 
-        if (conditionQueryList.size() == 0) return selectStatement.toString();
+        // Append where condition if it exist
+        if (conditionQueryList != null && conditionQueryList.size() > 0) {
+            String whereKeyword = this.env.getProperty("migrate.where.keyword");
+            selectStatement.append(" "+whereKeyword+" ");
 
-        selectStatement.append(" WHERE ");
+            conditionQueryList.stream().forEach(condition->{
 
-        conditionQueryList.stream().forEach(condition->{
+                List conditions = condition.getConditionList();
+                IntStream.range(0, conditions.size()).forEach(i->{
 
-            List conditions = condition.getConditionList();
-            IntStream.range(0, conditions.size()).forEach(i->{
+                    if (i>0) selectStatement.append( " " + condition.getOperator().getOperator() + " ");
+                    selectStatement.append(conditions.get(i));
+                });
 
-                if (i>0) selectStatement.append( " " + condition.getOperator().getOperator() + " ");
-                selectStatement.append(conditions.get(i));
             });
-
-        });
-        log.info(selectStatement.toString());
+        }
+        selectStatement.append(endOfSelect);
         return selectStatement.toString();
     }
 
@@ -72,7 +88,6 @@ public class Translator implements ITranslator{
     public List<IMigrationQuery> translate(List<IMigrationQuery> migrationQueries){
         migrationQueries.stream().forEach(migrationQuery -> {
             String toQuery = constructInsertionQuery(migrationQuery);
-            log.info(toQuery);
             migrationQuery.setToQuery(toQuery);
         });
         return migrationQueries;
@@ -105,7 +120,8 @@ public class Translator implements ITranslator{
      */
     private String constructInsertionHead(IMigrationQuery migrationQuery){
         StringBuilder insertStatement = new StringBuilder();
-        insertStatement.append("INSERT INTO ");
+        String insertKeyword = this.env.getProperty("migrate.insert.keyword");
+        insertStatement.append(insertKeyword+" ");
         insertStatement.append(migrationQuery.getToTable());
 
         return insertStatement.toString();
@@ -139,9 +155,12 @@ public class Translator implements ITranslator{
      */
     private String constructInsertionValues(IMigrationQuery migrationQuery, String mainInsert){
         StringBuilder insertStatement = new StringBuilder();
+        String valuesKeyword = this.env.getProperty("migrate.values.keyword");
+        String endOfInsertion = this.env.getProperty("migrate.end.insertion");
         migrationQuery.getResult().forEach(tuple -> {
             StringBuilder stringBuilder = new StringBuilder(mainInsert);
-            stringBuilder.append(" VALUES (");
+
+            stringBuilder.append(" "+valuesKeyword+"");
             int count = 0;
             for (Map.Entry entry : migrationQuery.getColumnsMapping().entrySet()) {
                 IColumnQuery columnQuery = (IColumnQuery)entry.getValue();
@@ -151,7 +170,8 @@ public class Translator implements ITranslator{
                 if (count++ >0 ) stringBuilder.append(",");
                 stringBuilder.append(val);
             }
-            stringBuilder.append("); \n");
+
+            stringBuilder.append(endOfInsertion+"\n");
             insertStatement.append(stringBuilder);
         });
 
@@ -171,10 +191,12 @@ public class Translator implements ITranslator{
     }
 
     private Object getValueFromQuery(IColumnQuery columnQuery, Tuple tuple, Object value, Object key, IMigrationQuery migrationQuery){
+
         Object val = value;
         Datasource datasource = columnQuery.getDatasource();
         if (columnQuery.getQuery() != null){
             String query = columnQuery.getQuery();
+            log.debug("Find Configuration query need to be execute: "+ query);
             Pattern p = Pattern.compile("\\$\\b(\\w*)");
             Matcher m = p.matcher(query);
             while (m.find()) {
@@ -185,11 +207,12 @@ public class Translator implements ITranslator{
                     val = getDefaultValue(tuple, columnQueryMapper, id);
                     val = getValueFromConfig(val, columnQuery);
                 }
-                System.out.println(m.group(1));
+                log.debug("Field found: "+ m.group(1));
                 query = query.replace("$"+m.group(1), val.toString());
             }
-
+            log.debug("After update Query: "+ query);
             List<Tuple> tupleList = queryExecutable.executeQuery(query,datasource);
+
             val = tupleList.get(0).get(0);
         }
         return val;
@@ -201,16 +224,15 @@ public class Translator implements ITranslator{
         Object value = "";
 
         if (!columnQuery.getSkipFrom())  value = tuple.get(key);
-
-
-
+        log.debug("Find Default Value for value: "+ value);
         if ((value == null || value.toString().isEmpty()) && columnQuery.getDefaultVal() != null) {
             value = columnQuery.getDefaultVal();
             if (value.equals("random")) {
+                log.debug("default value is set to be random value");
                 value  = (columnQuery.getDataType() != null && columnQuery.getDataType().toLowerCase().equals("number"))? generateRandomInt() : generateRandomString();
             }
         }
-
+        log.debug("value changed to be: "+ value);
         return value;
     }
 
@@ -237,9 +259,10 @@ public class Translator implements ITranslator{
         if (columnQuery.getConfig() != null){
             JacksonAdapter jacksonAdapter = new JacksonAdapter();
             try {
+                log.debug("Find Configuration Value for value: "+ val);
                 Map<?, ?> map =jacksonAdapter.convert(new File(columnQuery.getConfig()), Map.class);
                 val = map.get(val);
-
+                log.debug("value changed to be: "+ val);
             } catch (IOException e) {
                 log.error("getValueFromConfig "+ e.getMessage());
                 e.printStackTrace();
@@ -257,6 +280,13 @@ public class Translator implements ITranslator{
         }else if (columnQuery.getDataType().toLowerCase().equals("datetime")){
             val = val.toString().trim().split("\\.")[0];
         }
+        if (columnQuery.getDataType().toLowerCase().equals("varchar")){
+            val = val.toString().replace("'", "\"");
+            val = val.toString().replace("\r\n", " ' "+this.carriageReturnLineBreak+" ' ");
+            val = val.toString().replace("\n\r", " ' "+this.lineBreakCarriageReturn +" ' ");
+            val = val.toString().replace("\r", " ' "+this.carriageReturn+" ' ");
+            val = val.toString().replace("\n", " ' "+this.lineBreak+" ' ");
+        }
         castFormat= String.format(castFormat, val);
         return castFormat;
     }
@@ -270,13 +300,9 @@ public class Translator implements ITranslator{
 
             migrationQuery = translateTable(tableConfig, migrationQuery);
             migrationQuery = translateColumns(tableConfig.getColumns(), migrationQuery);
-            migrationQuery = translateWhere(tableConfig.getWhere(), migrationQuery);
+            if (tableConfig.getWhere() != null) migrationQuery = translateWhere(tableConfig.getWhere(), migrationQuery);
 
             migrationQuery.setSelectQuery(constructFromQuery(migrationQuery));
-
-
-            log.info(migrationQuery.getSelectQuery());
-
 
             migrationQueries.add(migrationQuery);
 
@@ -320,7 +346,6 @@ public class Translator implements ITranslator{
      * @throws ClassNotFoundException
      */
     public String constructCondition(String column, String value, String dataType, ComparisonOperator comparisonOperator) {
-
         StringBuilder result = new StringBuilder();
         result.append(column);
 
@@ -331,7 +356,6 @@ public class Translator implements ITranslator{
         result.append(castFormat);
 
         return result.toString();
-
     }
 
 
@@ -345,7 +369,6 @@ public class Translator implements ITranslator{
             else columnQuery = migrationQuery.setColumnsMapping(columnConfig.getFrom(), columnQuery);
             if (columnConfig.getFrom() != null && !columnConfig.getSkipFrom())
             log.info("Map Column ("+ columnConfig.getFrom() + ") -> Map Column (" + columnConfig.getTo()+")");
-
         }));
         return migrationQuery;
     }

@@ -7,6 +7,7 @@ import com.asset.migration.config.IMigrationConfig;
 import com.asset.migration.query.IMigrationQuery;
 import com.asset.migration.translator.ITranslator;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,11 +25,11 @@ import java.util.List;
 
 @Service
 @Data
+@Slf4j
 public class Migrate {
     @Autowired
     @Qualifier("primaryEntityManager")
     private EntityManager primaryEntityManager;
-
     @Autowired
     @Qualifier("secondEntityManager")
     private EntityManager secondaryEntityManager;
@@ -68,10 +69,12 @@ public class Migrate {
         this.queryExecutable= queryExecutable;
         return this;
     }
-
     public void run(){
-        if (parser == null || jsonAdapter == null || migrationConfig == null || translator == null || queryExecutable == null)
+        if (parser == null || jsonAdapter == null || migrationConfig == null || translator == null || queryExecutable == null){
+            log.error("You cannot run query without initialize IParser, IJsonAdapter, IMigrationConfig, ITranslator and  IQueryExecutable");
             throw new RuntimeException("You cannot run query without initialize IParser, IJsonAdapter, IMigrationConfig, ITranslator and  IQueryExecutable");
+
+        }
 
         run(parser, jsonAdapter, migrationConfig, translator, queryExecutable);
 
@@ -86,34 +89,10 @@ public class Migrate {
             migrationQueries =queryExecutable.executeQueries(migrationQueries);
             translator.translate(migrationQueries);
             queryExecutable.executeToQueries(migrationQueries);
-
+            log.info("********Congrats Migration Complete*********");
         }catch (FileNotFoundException e) {
+            log.error("File Not Found: "+ e.getMessage());
             e.printStackTrace();
-        }
-    }
-
-    private void test(){
-        Query query = primaryEntityManager.createNativeQuery("select * from users", Tuple.class);
-
-        List<Tuple> result = query.getResultList();
-
-        for (Tuple row: result){
-
-            // Get Column Names
-            List<TupleElement<?>> elements = row.getElements();
-            for (TupleElement<?> element : elements ) {
-                System.out.println(element.getAlias());
-            }
-
-            // Get Objects by Column Name
-            Object columnA;
-            Object columnB;
-            try {
-                columnA = row.get("columnA");
-                columnB= row.get("columnB");
-            } catch (IllegalArgumentException e) {
-                System.out.println("A column was not found");
-            }
         }
     }
 
